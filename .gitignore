@@ -1,0 +1,3 @@
+# 日々の生ログMarkdownはGit管理しない (outboxフォルダ自体は .gitkeep で維持)
+outbox/*
+!outbox/.gitkeep

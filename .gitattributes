@@ -1,0 +1,2 @@
+# Windows batch files should use CRLF for cmd.exe compatibility.
+*.bat text eol=crlf
