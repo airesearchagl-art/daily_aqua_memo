@@ -1,0 +1,2 @@
+# Windows batch はCRLFでcheckoutする (cmd.exeのLF起因の誤動作防止)
+*.bat text eol=crlf
