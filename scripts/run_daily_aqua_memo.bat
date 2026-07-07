@@ -1,26 +1,25 @@
 @echo off
-chcp 65001 >nul
 setlocal
 
 rem ============================================================
 rem Daily Aqua Memo run script
-rem   - AutoHotkey v2 を探して daily_aqua_memo.ahk を起動する
-rem   - AutoHotkey の自動ダウンロードはしない
-rem   - レジストリ変更・.ahk 関連付け変更はしない
-rem   - 管理者権限は要求しない
+rem - Finds AutoHotkey v2 and starts daily_aqua_memo.ahk
+rem - Does not download AutoHotkey
+rem - Does not modify registry or file associations
+rem - Does not require administrator privileges
 rem ============================================================
 
-rem スクリプト自身の場所からリポジトリルートへ移動
+rem Move from this script's location to the repository root
 cd /d "%~dp0.." || goto fail
 set "REPO_DIR=%CD%"
 
 if not exist "%REPO_DIR%\daily_aqua_memo.ahk" (
-    echo [ERROR] daily_aqua_memo.ahk が見つかりません: %REPO_DIR%
-    echo 先に scripts\setup_daily_aqua_memo.bat を実行してください。
+    echo [ERROR] daily_aqua_memo.ahk was not found: %REPO_DIR%
+    echo Run scripts\setup_daily_aqua_memo.bat first.
     goto fail
 )
 
-rem --- AutoHotkey v2 候補を探す ---
+rem --- Search for AutoHotkey v2 candidates ---
 set "AHK_EXE="
 if exist "C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe" set "AHK_EXE=C:\Program Files\AutoHotkey\v2\AutoHotkey64.exe"
 if not defined AHK_EXE if exist "C:\Program Files\AutoHotkey\AutoHotkey64.exe" set "AHK_EXE=C:\Program Files\AutoHotkey\AutoHotkey64.exe"
@@ -30,30 +29,31 @@ if not defined AHK_EXE for /f "delims=" %%i in ('where AutoHotkey.exe 2^>nul') d
 
 if not defined AHK_EXE goto ahk_not_found
 
-echo AutoHotkey : %AHK_EXE%
-echo Daily Aqua Memo を起動します...
+echo AutoHotkey found: %AHK_EXE%
+echo Starting Daily Aqua Memo...
 start "" "%AHK_EXE%" "%REPO_DIR%\daily_aqua_memo.ahk"
-echo 起動しました。タスクトレイに常駐します。Ctrl+Alt+M で入力フォームが開きます。
+echo Started. The app stays in the task tray. Use Ctrl+Alt+M to open the memo form.
 exit /b 0
 
 :ahk_not_found
-echo [ERROR] AutoHotkey v2 が見つかりませんでした。
+echo [ERROR] AutoHotkey v2 was not found.
 echo.
-echo AutoHotkey v2 をインストールしてください。
-echo 公式サイト: https://www.autohotkey.com/
+echo Install AutoHotkey v2 from:
+echo https://www.autohotkey.com/
 echo.
-echo 補足: .ahk ファイルを開いたときに「アプリを選択して .ahk ファイルを開く」
-echo という画面が表示されるのは、AutoHotkey が未インストール、または .ahk の
-echo 関連付けが未設定のためです。AutoHotkey v2 をインストールすると関連付けが
-echo 設定され、ダブルクリックでスクリプトを起動できるようになります。
+echo Note: if Windows shows an "app picker" dialog when you open a .ahk
+echo file, AutoHotkey is not installed or the .ahk file association is
+echo not set. Installing AutoHotkey v2 sets the association so that
+echo double-clicking the script starts it.
 echo.
-echo このスクリプトは AutoHotkey の自動ダウンロード・レジストリ変更・
-echo 関連付けの変更は行いません。インストール後にもう一度実行してください。
+echo This script does not download AutoHotkey.
+echo This script does not modify registry or file associations.
+echo Run this script again after installing AutoHotkey v2.
 pause
 exit /b 1
 
 :fail
 echo.
-echo 起動を中断しました。上記のエラーメッセージを確認してください。
+echo Startup was cancelled. Check the error message above.
 pause
 exit /b 1

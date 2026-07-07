@@ -1,12 +1,12 @@
 @echo off
-chcp 65001 >nul
 setlocal
 
 rem ============================================================
 rem Daily Aqua Memo setup script
-rem   - git clone / fetch / switch / pull のみを行う補助スクリプト
-rem   - commit / push / PR作成 / reset --hard / clean は行わない
-rem   - obsidian-vault には一切触れない
+rem - Helper that only runs git clone / fetch / switch / pull
+rem - Does not commit, push, or create pull requests
+rem - Does not run git reset --hard, git clean, or force push
+rem - Never touches obsidian-vault
 rem ============================================================
 
 set "BASE_DIR=C:\Users\shuns\.claude\projects"
@@ -21,14 +21,14 @@ echo.
 
 git --version >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] git が見つかりません。Git for Windows をインストールしてください。
+    echo [ERROR] git was not found. Install Git for Windows first.
     goto fail
 )
 
 if not exist "%BASE_DIR%" (
     mkdir "%BASE_DIR%"
     if errorlevel 1 (
-        echo [ERROR] フォルダを作成できません: %BASE_DIR%
+        echo [ERROR] Could not create folder: %BASE_DIR%
         goto fail
     )
 )
@@ -38,51 +38,51 @@ if exist "%REPO_DIR%" goto backup_and_clone
 goto clone_repo
 
 :update_repo
-echo 既存リポジトリを更新します...
+echo Updating the existing repository...
 cd /d "%REPO_DIR%" || goto fail
 git fetch origin
 if errorlevel 1 (
-    echo [ERROR] git fetch origin に失敗しました。ネットワークと認証を確認してください。
+    echo [ERROR] git fetch origin failed. Check network and authentication.
     goto fail
 )
 git switch %BRANCH% >nul 2>&1
 if errorlevel 1 (
     git switch -c %BRANCH% --track origin/%BRANCH%
     if errorlevel 1 (
-        echo [ERROR] ブランチ %BRANCH% へ切り替えられませんでした。
+        echo [ERROR] Could not switch to branch %BRANCH%.
         goto fail
     )
 )
 git pull --ff-only
 if errorlevel 1 (
-    echo [WARN] git pull --ff-only に失敗しました。ローカルに未pushの変更がある可能性があります。
-    echo [WARN] このスクリプトは reset や clean を行わないため、手動で状態を確認してください。
+    echo [WARN] git pull --ff-only failed. You may have local changes.
+    echo [WARN] This script never runs reset or clean. Check the state manually.
 )
 goto show_result
 
 :backup_and_clone
-echo daily_aqua_memo フォルダは存在しますが .git がありません。
-echo 削除はせず、バックアップへリネームしてから clone します。
+echo The daily_aqua_memo folder exists but has no .git directory.
+echo It will be renamed to a backup folder before cloning. Nothing is deleted.
 set "TS="
 for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "TS=%%i"
 if not defined TS (
-    echo [ERROR] タイムスタンプを取得できませんでした。
+    echo [ERROR] Could not get a timestamp.
     goto fail
 )
 ren "%REPO_DIR%" "daily_aqua_memo_backup_%TS%"
 if errorlevel 1 (
-    echo [ERROR] バックアップへのリネームに失敗しました: %REPO_DIR%
+    echo [ERROR] Could not rename to backup: %REPO_DIR%
     goto fail
 )
-echo 退避先: %BASE_DIR%\daily_aqua_memo_backup_%TS%
+echo Backup: %BASE_DIR%\daily_aqua_memo_backup_%TS%
 goto clone_repo
 
 :clone_repo
-echo リポジトリを clone します...
+echo Cloning the repository...
 cd /d "%BASE_DIR%" || goto fail
 git clone %REPO_URL% daily_aqua_memo
 if errorlevel 1 (
-    echo [ERROR] git clone に失敗しました。ネットワークと認証を確認してください。
+    echo [ERROR] git clone failed. Check network and authentication.
     goto fail
 )
 cd /d "%REPO_DIR%" || goto fail
@@ -90,7 +90,7 @@ git switch %BRANCH% >nul 2>&1
 if errorlevel 1 (
     git switch -c %BRANCH% --track origin/%BRANCH%
     if errorlevel 1 (
-        echo [ERROR] ブランチ %BRANCH% へ切り替えられませんでした。
+        echo [ERROR] Could not switch to branch %BRANCH%.
         goto fail
     )
 )
@@ -107,7 +107,7 @@ echo.
 echo --- git log --oneline -5 ---
 git log --oneline -5
 echo.
-echo セットアップ完了。次はこちらを実行してください:
+echo Setup finished. Next, run:
 echo   scripts\run_daily_aqua_memo.bat
 echo.
 pause
@@ -115,6 +115,6 @@ exit /b 0
 
 :fail
 echo.
-echo セットアップを中断しました。上記のエラーメッセージを確認してください。
+echo Setup was cancelled. Check the error message above.
 pause
 exit /b 1
