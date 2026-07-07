@@ -1,0 +1,8 @@
+{
+  "hotkey": "^!m",
+  "outbox_dir": "C:\\Users\\shuns\\.claude\\projects\\daily_aqua_memo\\outbox",
+  "default_context": "quick",
+  "contexts": ["quick", "work", "design", "dev", "personal", "reflection"],
+  "source": "Aqua Voice",
+  "device": "Windows PC"
+}
