@@ -10,7 +10,7 @@
 ;   - 音声認識・文字起こしをしない
 ;   - Aqua Voice API を制御しない
 ;   - ネットワークアクセスをしない
-;   - outbox 配下以外へ書き込まない
+;   - スクリプトと同じフォルダ配下の outbox 以外へ書き込まない
 ; ============================================================
 #Requires AutoHotkey v2.0
 #SingleInstance Force
@@ -105,13 +105,9 @@ SaveMemo() {
     if (context = "")
         context := Cfg["default_context"]
 
-    outboxDir := Cfg["outbox_dir"]
+    ; 起動時に検証済みの正規化パス (A_ScriptDir\outbox 配下のみ)
+    outboxDir := Cfg["outbox_dir_resolved"]
 
-    ; --- 保存先を outbox 配下に限定する安全チェック ---
-    if !IsSafeOutboxDir(outboxDir) {
-        FatalError("outbox_dir が 'outbox' フォルダを指していません。`n"
-            . "安全のため保存を中止します: " outboxDir)
-    }
     if !DirExist(outboxDir) {
         FatalError("outbox フォルダが存在しません: " outboxDir "`n"
             . "安全のため自動作成はせず、保存を中止します。")
@@ -172,12 +168,53 @@ IndexOf(arr, value) {
     return 0
 }
 
-; outbox_dir の末尾フォルダ名が "outbox" であることを要求する。
-; これにより設定ミスで Obsidian Vault などへ書き込む事故を防ぐ。
-IsSafeOutboxDir(dir) {
-    dir := RTrim(dir, "\/")
-    SplitPath(dir, &leaf)
-    return (leaf = "outbox")
+; ---------- outbox パス安全チェック ----------
+; 保存先は「スクリプトと同じフォルダ配下の outbox」のみに限定する。
+;   - config.json の outbox_dir を GetFullPathNameW で正規化し、
+;     ".." やスラッシュ混在によるリポジトリ外への脱出を解決してから判定する
+;   - A_ScriptDir\outbox と同一、または A_ScriptDir 配下で末尾フォルダ名が
+;     "outbox" のパスのみ許可する
+;   - obsidian-vault を含むパスは無条件で拒否する
+;   - 拒否時は別パスへフォールバックせず、エラーを表示して停止する
+
+ValidateOutboxDirOrDie(cfgDir) {
+    ; 相対パスはカレントディレクトリではなく必ず A_ScriptDir 基準で解決する
+    if !RegExMatch(cfgDir, "^([A-Za-z]:\\|\\\\)")
+        cfgDir := A_ScriptDir "\" cfgDir
+    full := PathGetFull(RTrim(cfgDir, "\/"))
+    scriptDir := PathGetFull(A_ScriptDir)
+    if (full = "" || scriptDir = "")
+        FatalError("outbox_dir を正規化できません: " cfgDir)
+
+    fullL := StrLower(full)
+    scriptL := StrLower(RTrim(scriptDir, "\/"))
+
+    if InStr(fullL, "obsidian-vault")
+        FatalError("outbox_dir が obsidian-vault 配下を指しています。`n"
+            . "安全のため停止します: " full)
+
+    SplitPath(full, &leaf)
+    if (StrLower(leaf) != "outbox")
+        FatalError("outbox_dir の末尾フォルダ名が 'outbox' ではありません。`n"
+            . "安全のため停止します: " full)
+
+    ; A_ScriptDir\outbox と同一、または A_ScriptDir 配下のみ許可
+    if (fullL != scriptL "\outbox") && (SubStr(fullL, 1, StrLen(scriptL) + 1) != scriptL "\")
+        FatalError("outbox_dir がスクリプトフォルダ (" scriptDir ") の外を指しています。`n"
+            . "保存先は " scriptDir "\outbox 配下のみ許可されます。`n"
+            . "安全のため停止します: " full)
+
+    return full
+}
+
+; Win32 GetFullPathNameW でパスを絶対・正規形へ解決する ("..", "." , "/" を解決)
+PathGetFull(path) {
+    cap := 4096
+    buf := Buffer(cap * 2)
+    len := DllCall("GetFullPathNameW", "Str", path, "UInt", cap, "Ptr", buf, "Ptr", 0, "UInt")
+    if (len = 0 || len > cap)
+        return ""
+    return StrGet(buf, "UTF-16")
 }
 
 FatalError(msg) {
@@ -213,6 +250,9 @@ LoadConfigOrDie(path) {
     if (contexts.Length = 0)
         FatalError("config.json の contexts が読み取れません。")
     cfg["contexts"] := contexts
+
+    ; 起動時に保存先を検証する。不正なら即エラー停止 (フォールバックしない)
+    cfg["outbox_dir_resolved"] := ValidateOutboxDirOrDie(cfg["outbox_dir"])
 
     return cfg
 }

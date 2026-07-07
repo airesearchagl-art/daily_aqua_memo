@@ -48,7 +48,15 @@ C:\Users\shuns\.claude\projects\daily_aqua_memo\outbox\YYYY-MM-DD.md
 - ファイルが存在しない場合のみ、冒頭に `# YYYY-MM-DD Daily Raw Outbox` 見出しを作成します
 - UTF-8 で保存します
 - 保存後はフォームが閉じ、トレイ通知が表示されます
-- 保存先は `outbox` 配下に限定されます(`outbox_dir` の末尾フォルダ名が `outbox` でない場合はエラー停止します)
+
+### 保存先の安全チェック
+
+保存先は **スクリプトと同じフォルダ配下の `outbox`** のみに限定されます。起動時に `config.json` の `outbox_dir` を検証し、以下をすべて満たさない場合はエラーメッセージを表示して停止します(別パスへのフォールバックはしません)。
+
+- `outbox_dir` を Win32 `GetFullPathNameW` で正規化し、`..` や `/` 混在によるスクリプトフォルダ外への脱出パスを解決したうえで判定する
+- 正規化後のパスが「スクリプトフォルダの `outbox`」と同一、またはスクリプトフォルダ配下で末尾フォルダ名が `outbox` であること
+- 末尾フォルダ名が `outbox` でも、スクリプトフォルダの外を指す場合は拒否する
+- パスに `obsidian-vault` を含む場合は無条件で拒否する(`C:\Users\shuns\obsidian-vault` 配下への書き込み防止)
 
 ## Markdown 出力形式
 
