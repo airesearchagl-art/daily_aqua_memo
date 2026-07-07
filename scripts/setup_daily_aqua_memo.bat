@@ -12,7 +12,7 @@ rem ============================================================
 set "BASE_DIR=C:\Users\shuns\.claude\projects"
 set "REPO_DIR=%BASE_DIR%\daily_aqua_memo"
 set "REPO_URL=https://github.com/airesearchagl-art/daily_aqua_memo.git"
-set "BRANCH=feature/mvp-local-outbox"
+set "BRANCH=main"
 
 echo === Daily Aqua Memo setup ===
 echo repo : %REPO_URL%
@@ -53,7 +53,7 @@ if errorlevel 1 (
         goto fail
     )
 )
-git pull --ff-only
+git pull --ff-only origin %BRANCH%
 if errorlevel 1 (
     echo [WARN] git pull --ff-only failed. You may have local changes.
     echo [WARN] This script never runs reset or clean. Check the state manually.
