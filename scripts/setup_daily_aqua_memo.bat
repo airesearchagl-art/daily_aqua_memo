@@ -3,21 +3,18 @@ setlocal
 
 rem ============================================================
 rem Daily Aqua Memo setup script
-rem - Helper that only runs git clone / fetch / switch / pull
-rem - Does not commit, push, or create pull requests
+rem - Helper for an ALREADY CLONED repository
+rem - Shows repository status and updates the CURRENT branch only
+rem - Runs only: git fetch origin / git pull --ff-only
+rem - Never switches branches and never creates branches
+rem - Does not clone, commit, push, or create pull requests
 rem - Does not run git reset --hard, git clean, or force push
 rem - Never touches obsidian-vault
+rem
+rem For the initial clone, follow the manual steps in README.md.
 rem ============================================================
 
-set "BASE_DIR=C:\Users\shuns\.claude\projects"
-set "REPO_DIR=%BASE_DIR%\daily_aqua_memo"
 set "REPO_URL=https://github.com/airesearchagl-art/daily_aqua_memo.git"
-set "BRANCH=feature/mvp-local-outbox"
-
-echo === Daily Aqua Memo setup ===
-echo repo : %REPO_URL%
-echo path : %REPO_DIR%
-echo.
 
 git --version >nul 2>&1
 if errorlevel 1 (
@@ -25,34 +22,48 @@ if errorlevel 1 (
     goto fail
 )
 
-if not exist "%BASE_DIR%" (
-    mkdir "%BASE_DIR%"
-    if errorlevel 1 (
-        echo [ERROR] Could not create folder: %BASE_DIR%
-        goto fail
-    )
+rem Move from this script's location to the repository root
+cd /d "%~dp0.." || goto fail
+set "REPO_DIR=%CD%"
+
+if not exist "%REPO_DIR%\.git" (
+    echo [ERROR] This folder is not a git repository: %REPO_DIR%
+    echo Clone the repository first. See README.md for the initial clone steps.
+    goto fail
 )
 
-if exist "%REPO_DIR%\.git" goto update_repo
-if exist "%REPO_DIR%" goto backup_and_clone
-goto clone_repo
+echo === Daily Aqua Memo setup ===
+echo repo : %REPO_URL%
+echo path : %REPO_DIR%
+echo.
 
-:update_repo
-echo Updating the existing repository...
-cd /d "%REPO_DIR%" || goto fail
+set "CUR_BRANCH="
+for /f "delims=" %%i in ('git branch --show-current') do set "CUR_BRANCH=%%i"
+if not defined CUR_BRANCH (
+    echo [ERROR] Could not determine the current branch. HEAD may be detached.
+    goto fail
+)
+echo current branch : %CUR_BRANCH%
+echo This script stays on the current branch. It never switches branches.
+echo.
+
+echo Fetching from origin...
 git fetch origin
 if errorlevel 1 (
     echo [ERROR] git fetch origin failed. Check network and authentication.
     goto fail
 )
-git switch %BRANCH% >nul 2>&1
-if errorlevel 1 (
-    git switch -c %BRANCH% --track origin/%BRANCH%
-    if errorlevel 1 (
-        echo [ERROR] Could not switch to branch %BRANCH%.
-        goto fail
-    )
+
+rem Update the current branch only when it has an upstream
+set "UPSTREAM="
+for /f "delims=" %%i in ('git rev-parse --abbrev-ref --symbolic-full-name "@{upstream}" 2^>nul') do set "UPSTREAM=%%i"
+if not defined UPSTREAM (
+    echo [WARN] No upstream is configured for the current branch.
+    echo Skip pull. Use git pull manually if needed.
+    goto show_result
 )
+
+echo upstream : %UPSTREAM%
 git pull --ff-only
 if errorlevel 1 (
     echo [WARN] git pull --ff-only failed. You may have local changes.
@@ -60,46 +71,13 @@ if errorlevel 1 (
 )
 goto show_result
 
-:backup_and_clone
-echo The daily_aqua_memo folder exists but has no .git directory.
-echo It will be renamed to a backup folder before cloning. Nothing is deleted.
-set "TS="
-for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "TS=%%i"
-if not defined TS (
-    echo [ERROR] Could not get a timestamp.
-    goto fail
-)
-ren "%REPO_DIR%" "daily_aqua_memo_backup_%TS%"
-if errorlevel 1 (
-    echo [ERROR] Could not rename to backup: %REPO_DIR%
-    goto fail
-)
-echo Backup: %BASE_DIR%\daily_aqua_memo_backup_%TS%
-goto clone_repo
-
-:clone_repo
-echo Cloning the repository...
-cd /d "%BASE_DIR%" || goto fail
-git clone %REPO_URL% daily_aqua_memo
-if errorlevel 1 (
-    echo [ERROR] git clone failed. Check network and authentication.
-    goto fail
-)
-cd /d "%REPO_DIR%" || goto fail
-git switch %BRANCH% >nul 2>&1
-if errorlevel 1 (
-    git switch -c %BRANCH% --track origin/%BRANCH%
-    if errorlevel 1 (
-        echo [ERROR] Could not switch to branch %BRANCH%.
-        goto fail
-    )
-)
-goto show_result
-
 :show_result
 echo.
 echo --- current branch ---
 git branch --show-current
+echo.
+echo --- upstream ---
+if defined UPSTREAM (echo %UPSTREAM%) else (echo none)
 echo.
 echo --- git status --short ---
 git status --short
